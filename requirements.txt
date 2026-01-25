@@ -1,0 +1,22 @@
+# Vietnamese Scene Text Recognition
+# DICT-Guided Approach
+
+# PyTorch (install with CUDA if needed)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Image processing
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# Scientific computing
+numpy>=1.24.0
+
+# Progress bars & utilities
+tqdm>=4.65.0
+
+# Visualization (optional)
+matplotlib>=3.7.0
+
+# Data handling
+pandas>=2.0.0
