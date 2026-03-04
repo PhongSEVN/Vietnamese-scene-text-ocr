@@ -1,0 +1,28 @@
+# Cấu hình huấn luyện mô hình Text Recognition (Attention OCR)
+project_name: "Vietnamese-OCR-Attention"
+
+# Đường dẫn dữ liệu
+data_root: "data/dataset"
+train_images: "train_images"          # im0001-im1200
+val_images: "test_image"              # im1201-im1500
+unseen_test_images: "unseen_test_images"
+train_labels: "labels"
+
+# Cấu hình mô hình (105 ký tự: ASCII + 9 Tone Markers)
+img_height: 32
+img_width: 128
+char_list: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ˋˊ﹒ˀ˜ˇˆ˒‑"
+
+# Tham số huấn luyện (Tối ưu theo paper VinText)
+batch_size: 16
+num_epochs: 100
+learning_rate: 0.001
+optimizer: "adam"
+num_workers: 0
+save_interval: 5
+checkpoint_dir: "checkpoints"
+
+# Kiến trúc Attention OCR
+rnn_hidden_size: 256
+max_text_length: 25
+teacher_forcing_ratio: 0.5

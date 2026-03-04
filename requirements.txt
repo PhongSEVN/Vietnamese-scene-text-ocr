@@ -11,6 +11,7 @@ Pillow>=10.0.0
 
 # Scientific computing
 numpy>=1.24.0
+editdistance>=0.6.2
 
 # Progress bars & utilities
 tqdm>=4.65.0
@@ -20,3 +21,7 @@ matplotlib>=3.7.0
 
 # Data handling
 pandas>=2.0.0
+
+# NLP Post-Processing (chuẩn hóa kết quả OCR)
+symspellpy>=6.7.7
+underthesea>=6.8.0
