@@ -51,14 +51,15 @@ def train():
     converter = AttentionLabelConverter(max_len=config.get('max_text_length', 25))
     num_class = len(converter.alphabet)
 
-    transform = ResizeNormalize(size=(config['img_width'], config['img_height']))
+    train_transform = ResizeNormalize(size=(config['img_width'], config['img_height']), augment=True)
+    val_transform = ResizeNormalize(size=(config['img_width'], config['img_height']), augment=False)
 
     # Khởi tạo dataset với converter để nhãn được tiền xử lý sang indices
     train_dataset = VinAIDataset(
         root=config['data_root'],
         img_folder=config['train_images'],
         label_folder=config['train_labels'],
-        transform=transform,
+        transform=train_transform,
         converter=converter
     )
 
@@ -66,7 +67,7 @@ def train():
         root=config['data_root'],
         img_folder=config.get('val_images', 'test_image'),
         label_folder=config['train_labels'],
-        transform=transform,
+        transform=val_transform,
         converter=converter
     )
 
@@ -157,24 +158,21 @@ def train():
         model.eval()
         val_loss = 0
         total_word_acc = 0
-        
+
         with torch.no_grad():
             for images, target_indices in tqdm(val_loader, desc=f"Epoch {epoch+1} [Val]  "):
                 images = images.to(device)
                 target_indices = target_indices.to(device)
-                
-                # Validation mode: model tự decode (không targets) -> [B, MaxLen]
-                # Nhưng để tính Loss, ta cần forward kiểu train (có targets)
-                # Hoặc chỉ tính Accuracy
-                
-                # Tính Loss (teacher forcing off hoặc dùng targets để tính loss)
+
+                # 1 lần forward với targets để tính Loss [T, B, n_class]
                 outputs_for_loss = model(images, target_indices)
                 target_transposed = target_indices.transpose(0, 1).contiguous().view(-1)
                 loss = criterion(outputs_for_loss.view(-1, num_class), target_transposed)
                 val_loss += loss.item()
-                
-                # Tính Accuracy (decode độc lập)
-                pred_indices = model(images) # [B, MaxLen]
+
+                # Lấy pred_indices từ argmax (không cần forward lần 2)
+                # outputs_for_loss: [T, B, n_class] -> argmax -> [T, B] -> transpose -> [B, T]
+                pred_indices = torch.argmax(outputs_for_loss, dim=2).transpose(0, 1)  # [B, T]
                 _, word_acc = compute_accuracy(pred_indices, target_indices, converter)
                 total_word_acc += word_acc
         

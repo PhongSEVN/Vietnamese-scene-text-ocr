@@ -3,6 +3,7 @@ import cv2
 import torch
 from torch.utils.data import Dataset
 import numpy as np
+import random
 
 
 class VinAIDataset(Dataset):
@@ -120,10 +121,28 @@ class VinAIDataset(Dataset):
 
 
 class ResizeNormalize:
-    def __init__(self, size=(128, 32)):
+    def __init__(self, size=(128, 32), augment=False):
         self.size = size  # (W, H)
+        self.augment = augment
 
     def __call__(self, img):
+        if self.augment and img is not None and img.size > 0:
+            try:
+                # Ảnh crop đôi khi là slice không liền mạch trong memory
+                img = np.ascontiguousarray(img)
+                
+                # Random brightness/contrast
+                if random.random() < 0.5:
+                    alpha = random.uniform(0.5, 1.5)  # Contrast control (0.5-1.5)
+                    beta = random.uniform(-30, 30)    # Brightness control
+                    img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
+                
+                # Random Gaussian Blur (tránh ảnh quá nhỏ gây lỗi C++)
+                if random.random() < 0.3 and img.shape[0] >= 3 and img.shape[1] >= 3:
+                    img = cv2.GaussianBlur(img, (3, 3), 0)
+            except Exception as e:
+                pass # Bỏ qua augmentation nếu có lỗi do ảnh dị thường
+
         if len(img.shape) == 3:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 

@@ -45,22 +45,25 @@ class ToneMarkerConverter:
         return groups
 
     def parse_tone(self, word):
-        """Chuyển chữ có dấu sang: gốc + dấu thanh ở cuối (ví dụ: Rồng -> Rongˋ)."""
-        res = ""
-        tone = ""
-        for char in word:
-            found_in_dict = False
-            for group in self.groups:
-                if char in group:
-                    if tone == "":
-                        tone = self.TONES[group.index(char)]
-                    res += group[0]
-                    found_in_dict = True
-                    break
-            if not found_in_dict:
-                res += char
-        res += tone
-        return res
+        """Chuyển chữ có dấu sang: gốc + dấu thanh ở cuối (tách theo khoảng trắng)."""
+        syllables = word.split(' ')
+        out_syllables = []
+        for syll in syllables:
+            res = ""
+            tone = ""
+            for char in syll:
+                found_in_dict = False
+                for group in self.groups:
+                    if char in group:
+                        if tone == "":
+                            tone = self.TONES[group.index(char)]
+                        res += group[0]
+                        found_in_dict = True
+                        break
+                if not found_in_dict:
+                    res += char
+            out_syllables.append(res + tone)
+        return " ".join(out_syllables)
 
     def full_parse(self, word):
         """Chuyển chữ Việt sang định dạng Tone-marker encoding (vd: Rồng -> Roˆngˋ)."""
@@ -136,32 +139,39 @@ class ToneMarkerConverter:
 
     def _decode_tone_marker(self, recognition):
         """Logic decode từ 105 ký tự về chữ Việt có dấu chuẩn."""
-        # 1. Khôi phục ký tự bổ trợ (aˇ -> ă, aˆ -> â, ...)
+        # 1. Khôi phục ký tự bổ trợ trước (aˇ -> ă, aˆ -> â, ...)
         for char in self.TARGETS:
             recognition = recognition.replace(char, self.SOURCES[self.TARGETS.index(char)])
             
-        if len(recognition) < 1:
-            return recognition
-            
-        # 2. Đưa dấu thanh về đúng vị trí
-        if recognition[-1] in self.TONES:
-            tone = recognition[-1]
-            if len(recognition) < 2:
-                return recognition[:-1] # chỉ có dấu thanh?
+        # 2. Xử lý dấu thanh cho từng âm tiết
+        syllables = recognition.split(' ')
+        decoded_syllables = []
+        for syll in syllables:
+            if len(syll) < 1:
+                decoded_syllables.append(syll)
+                continue
                 
-            base_word = recognition[:-1]
-            replace_char = self.correct_tone_position(base_word)
-            
-            if tone != "":
+            if syll[-1] in self.TONES and syll[-1] != "":
+                tone = syll[-1]
+                if len(syll) < 2:
+                    decoded_syllables.append(syll[:-1])
+                    continue
+                    
+                base_word = syll[:-1]
+                replace_char = self.correct_tone_position(base_word)
+                
+                replaced = False
                 for group in self.groups:
                     if replace_char in group:
                         # Thay thế ký tự không dấu bằng ký tự có dấu thanh tương ứng
-                        recognition = base_word.replace(replace_char, group[self.TONES.index(tone)], 1)
+                        syll = base_word.replace(replace_char, group[self.TONES.index(tone)], 1)
+                        replaced = True
                         break
-            else:
-                recognition = base_word
-                
-        return recognition
+                if not replaced:
+                    syll = base_word
+            decoded_syllables.append(syll)
+            
+        return " ".join(decoded_syllables)
 
 class AttentionLabelConverter(ToneMarkerConverter):
     """Mở rộng ToneMarkerConverter cho Attention model (với SOS token)."""

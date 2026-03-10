@@ -15,12 +15,14 @@ char_list: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`a
 
 # Tham số huấn luyện (Tối ưu theo paper VinText)
 batch_size: 16
-num_epochs: 100
+num_epochs: 3
 learning_rate: 0.001
 optimizer: "adam"
 num_workers: 0
 save_interval: 5
 checkpoint_dir: "checkpoints"
+resume_checkpoint: null          # Đường dẫn checkpoint để tiếp tục train (null = train từ đầu)
+eval_checkpoint: "checkpoints/attention_ocr_best.pth"  # Checkpoint dùng cho eval/inference
 
 # Kiến trúc Attention OCR
 rnn_hidden_size: 256
