@@ -19,8 +19,8 @@ def evaluate():
 
     model = TransformerOCR(
         vocab_size=vocab_size, d_model=256, nhead=8,
-        num_encoder_layers=6, num_decoder_layers=6,
-        dim_feedforward=2048, max_seq_length=128,
+        num_encoder_layers=3, num_decoder_layers=3,
+        dim_feedforward=1024, max_seq_length=128,
         cnn_pretrained=False, cnn_dropout=0.0,
         ss=[(2,2),(2,2),(2,1),(2,1),(1,1)],
         ks=[(2,2),(2,2),(2,1),(2,1),(1,1)],

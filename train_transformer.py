@@ -40,9 +40,9 @@ def train():
 
     model = TransformerOCR(
         vocab_size=vocab_size, d_model=256, nhead=8,
-        num_encoder_layers=6, num_decoder_layers=6,
-        dim_feedforward=2048, max_seq_length=128,
-        pos_dropout=0.1, trans_dropout=0.1,
+        num_encoder_layers=3, num_decoder_layers=3,
+        dim_feedforward=1024, max_seq_length=128,
+        pos_dropout=0.1, trans_dropout=0.2,
         cnn_pretrained=True, cnn_dropout=0.5,
         ss=[(2,2),(2,2),(2,1),(2,1),(1,1)],
         ks=[(2,2),(2,2),(2,1),(2,1),(1,1)],
@@ -66,9 +66,12 @@ def train():
         print(f"Resumed from: {resume_path}")
 
     criterion = nn.CrossEntropyLoss(ignore_index=Vocab.PAD)
-    lr = config.get('learning_rate', 0.0001)
+    lr = 0.0001
     optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-6)
+    scheduler = optim.lr_scheduler.OneCycleLR(
+        optimizer, max_lr=lr, epochs=config.get('num_epochs', 50),
+        steps_per_epoch=len(train_loader), pct_start=0.1
+    )
 
     num_epochs = config.get('num_epochs', 50)
     best_word_acc = 0.0
@@ -94,6 +97,7 @@ def train():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
             optimizer.step()
+            scheduler.step()
 
             train_loss += loss.item()
             pbar.set_postfix({'loss': f'{loss.item():.4f}'})
@@ -132,8 +136,6 @@ def train():
 
         print(f"\nEpoch {epoch+1} - Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | "
               f"Word Acc: {word_acc:.2%} | LR: {optimizer.param_groups[0]['lr']:.2e}")
-
-        scheduler.step(avg_val_loss)
 
         if word_acc > best_word_acc:
             best_word_acc = word_acc
