@@ -70,7 +70,15 @@ class TransformerOCRDataset(Dataset):
 
         for img_file in img_files:
             img_path = os.path.join(img_dir, img_file)
-            label_path = os.path.join(label_dir, os.path.splitext(img_file)[0] + '.txt')
+
+            import re
+            nums = re.findall(r'\d+', os.path.splitext(img_file)[0])
+            if nums:
+                label_file = f"gt_{int(nums[-1])}.txt"
+            else:
+                label_file = os.path.splitext(img_file)[0] + '.txt'
+            label_path = os.path.join(label_dir, label_file)
+
             if not os.path.exists(label_path):
                 continue
             try:

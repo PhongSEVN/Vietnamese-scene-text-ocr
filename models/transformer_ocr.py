@@ -6,7 +6,7 @@ from torchvision import models
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout=0.1, max_len=256):
+    def __init__(self, d_model, dropout=0.1, max_len=1024):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
         pe = torch.zeros(max_len, d_model)
