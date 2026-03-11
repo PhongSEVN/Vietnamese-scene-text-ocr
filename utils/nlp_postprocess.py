@@ -360,20 +360,21 @@ class VietnameseSpellCorrector:
         words = text.split()
         corrected_words = []
         
-        for word in words:
+        for idx_word in words:
             # Tách dấu câu ra khỏi từ
             prefix_punct = ''
             suffix_punct = ''
+            word_clean = idx_word
             
-            while word and not word[0].isalnum():
-                prefix_punct += word[0]
-                word = word[1:]
-            while word and not word[-1].isalnum():
-                suffix_punct = word[-1] + suffix_punct
-                word = word[:-1]
+            while word_clean and not word_clean[0].isalnum():
+                prefix_punct += word_clean[0]
+                word_clean = word_clean[1:]
+            while word_clean and not word_clean[-1].isalnum():
+                suffix_punct = word_clean[-1] + suffix_punct
+                word_clean = word_clean[:-1]
             
-            if word:
-                corrected = self.correct_syllable(word)
+            if word_clean:
+                corrected = self.correct_syllable(word_clean)
                 corrected_words.append(prefix_punct + corrected + suffix_punct)
             else:
                 corrected_words.append(prefix_punct + suffix_punct)
