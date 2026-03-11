@@ -59,7 +59,7 @@ class LanguageTransformer(nn.Module):
         super().__init__()
         self.d_model = d_model
         self.embed_tgt = nn.Embedding(vocab_size, d_model)
-        self.pos_enc = PositionalEncoding(d_model, pos_dropout, max_seq_length)
+        self.pos_enc = PositionalEncoding(d_model, pos_dropout, max_len=1024)
         self.transformer = nn.Transformer(
             d_model, nhead, num_encoder_layers, num_decoder_layers,
             dim_feedforward, trans_dropout, batch_first=False
