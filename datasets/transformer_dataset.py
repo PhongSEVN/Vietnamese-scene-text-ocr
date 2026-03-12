@@ -131,10 +131,38 @@ class TransformerOCRDataset(Dataset):
         if self.augment and img.size > 0:
             try:
                 img = np.ascontiguousarray(img)
+                import random
+                
                 if random.random() < 0.3:
-                    img = cv2.convertScaleAbs(img, alpha=random.uniform(0.7, 1.3), beta=random.uniform(-20, 20))
-                if random.random() < 0.2 and img.shape[0] >= 3 and img.shape[1] >= 3:
-                    img = cv2.GaussianBlur(img, (3, 3), 0)
+                    h, w = img.shape[:2]
+                    src_pts = np.float32([[0,0], [w-1,0], [0,h-1], [w-1,h-1]])
+                    offset = random.randint(1, 5)
+                    dst_pts = np.float32([
+                        [random.randint(0, offset), random.randint(0, offset)],
+                        [w-1 - random.randint(0, offset), random.randint(0, offset)],
+                        [random.randint(0, offset), h-1 - random.randint(0, offset)],
+                        [w-1 - random.randint(0, offset), h-1 - random.randint(0, offset)]
+                    ])
+                    M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+                    img = cv2.warpPerspective(img, M, (w, h))
+
+                if random.random() < 0.2:
+                    h, w = img.shape[:2]
+                    angle = random.uniform(-5, 5)
+                    M = cv2.getRotationMatrix2D((w/2, h/2), angle, 1)
+                    img = cv2.warpAffine(img, M, (w, h))
+
+                if random.random() < 0.4:
+                    alpha = random.uniform(0.7, 1.3)
+                    beta = random.uniform(-30, 30)
+                    img = cv2.convertScaleAbs(img, alpha=alpha, beta=beta)
+                
+                if random.random() < 0.3:
+                    if random.random() < 0.5:
+                        noise = np.random.normal(0, 5, img.shape).astype(np.uint8)
+                        img = cv2.add(img, noise)
+                    else:
+                        img = cv2.GaussianBlur(img, (3, 3), 0)
             except Exception:
                 pass
 

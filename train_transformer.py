@@ -42,7 +42,7 @@ def train():
         vocab_size=vocab_size, d_model=256, nhead=8,
         num_encoder_layers=3, num_decoder_layers=3,
         dim_feedforward=1024, max_seq_length=128,
-        pos_dropout=0.1, trans_dropout=0.2,
+        pos_dropout=0.1, trans_dropout=0.3,
         cnn_pretrained=True, cnn_dropout=0.5,
         ss=[(2,2),(2,2),(2,1),(2,1),(1,1)],
         ks=[(2,2),(2,2),(2,1),(2,1),(1,1)],
@@ -65,9 +65,9 @@ def train():
             model.load_state_dict(ckpt)
         print(f"Resumed from: {resume_path}")
 
-    criterion = nn.CrossEntropyLoss(ignore_index=Vocab.PAD)
-    lr = 0.0001
-    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9)
+    criterion = nn.CrossEntropyLoss(ignore_index=Vocab.PAD, label_smoothing=0.1)
+    lr = 0.00005
+    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.OneCycleLR(
         optimizer, max_lr=lr, epochs=config.get('num_epochs', 50),
         steps_per_epoch=len(train_loader), pct_start=0.1

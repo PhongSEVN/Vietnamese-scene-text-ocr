@@ -335,7 +335,7 @@ if __name__ == "__main__":
     )
 
     # Đổi đường dẫn ảnh bạn muốn test tại đây
-    image_to_test = "data/dataset/test_image/im1425.jpg"
+    image_to_test = "data/dataset/test_image/im1215.jpg"
 
     print(f"\nĐang thực hiện OCR cho: {image_to_test}...")
     results = pipeline.run_ocr(image_to_test)
