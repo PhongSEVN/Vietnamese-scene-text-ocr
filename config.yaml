@@ -22,7 +22,7 @@ num_workers: 0
 save_interval: 5
 checkpoint_dir: "checkpoints"
 resume_checkpoint: null          # Đường dẫn checkpoint để tiếp tục train (null = train từ đầu)
-eval_checkpoint: "checkpoints/attention_ocr_best.pth"  # Checkpoint dùng cho eval/inference
+eval_checkpoint: "checkpoints/transformer_ocr_best.pth"  # Checkpoint dùng cho eval/inference
 
 # Kiến trúc Attention OCR
 rnn_hidden_size: 256
