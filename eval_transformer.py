@@ -54,7 +54,7 @@ def evaluate():
     char_total = 0
 
     with torch.no_grad():
-        for i, (img_batch, label_batch) in enumerate(tqdm(test_loader)):
+        for i, (img_batch, label_batch, _) in enumerate(tqdm(test_loader)):
             img_batch = img_batch.to(device)
             pred_indices, _ = model.greedy_decode(img_batch, max_len=config.get('max_text_length', 25))
 
@@ -70,7 +70,7 @@ def evaluate():
                 for p, g in zip(pred, gt):
                     if p == g:
                         char_correct += 1
-                char_total += max(len(pred), len(gt))
+                char_total += len(gt)
                 total_words += 1
 
     print(f"\n{'='*40}")

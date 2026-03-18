@@ -1,4 +1,5 @@
 import os
+import re
 import cv2
 import math
 import random
@@ -71,7 +72,6 @@ class TransformerOCRDataset(Dataset):
         for img_file in img_files:
             img_path = os.path.join(img_dir, img_file)
 
-            import re
             nums = re.findall(r'\d+', os.path.splitext(img_file)[0])
             if nums:
                 label_file = f"gt_{int(nums[-1])}.txt"

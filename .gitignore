@@ -1,6 +1,6 @@
 .idea
 .vscode
-README.md
+# README.md
 .venv
 /data
 #/checkpoints/*

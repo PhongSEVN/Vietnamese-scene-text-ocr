@@ -90,13 +90,13 @@ def train():
             tgt_output = label_batch[:, 1:]
             tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-            # build src padding mask: CNN output width depends on input width
-            src_len = img_batch.shape[3] // 4  # approximate feature map width
+            # build src padding mask: CNN output seq_len = H_out * W_out = 2 * (W // 4) = W // 2
+            src_len = img_batch.shape[3] // 2
             src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
             for i, w in enumerate(img_widths):
-                feat_w = max(1, w.item() // 4)
-                if feat_w < src_len:
-                    src_key_padding_mask[i, feat_w:] = True
+                feat_valid = max(1, w.item() // 4) * 2
+                if feat_valid < src_len:
+                    src_key_padding_mask[i, feat_valid:] = True
 
             output = model(img_batch, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
             loss = criterion(output.contiguous().view(-1, vocab_size), tgt_output.contiguous().view(-1))
@@ -127,12 +127,12 @@ def train():
                 tgt_output = label_batch[:, 1:]
                 tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-                src_len = img_batch.shape[3] // 4
+                src_len = img_batch.shape[3] // 2
                 src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
                 for i, w in enumerate(img_widths):
-                    feat_w = max(1, w.item() // 4)
-                    if feat_w < src_len:
-                        src_key_padding_mask[i, feat_w:] = True
+                    feat_valid = max(1, w.item() // 4) * 2
+                    if feat_valid < src_len:
+                        src_key_padding_mask[i, feat_valid:] = True
 
                 output = model(img_batch, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
                 loss = criterion(output.contiguous().view(-1, vocab_size), tgt_output.contiguous().view(-1))
