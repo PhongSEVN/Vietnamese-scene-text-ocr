@@ -66,17 +66,17 @@ class LanguageTransformer(nn.Module):
         )
         self.fc = nn.Linear(d_model, vocab_size)
 
-    def forward(self, src, tgt, tgt_key_padding_mask=None):
+    def forward(self, src, tgt, tgt_key_padding_mask=None, src_key_padding_mask=None):
         tgt_mask = self.gen_nopeek_mask(tgt.shape[0]).to(src.device)
         src = self.pos_enc(src * math.sqrt(self.d_model))
         tgt = self.pos_enc(self.embed_tgt(tgt) * math.sqrt(self.d_model))
 
-        if tgt_key_padding_mask is not None:
-            output = self.transformer(src, tgt, tgt_mask=tgt_mask,
-                                      tgt_key_padding_mask=tgt_key_padding_mask.float())
-        else:
-            output = self.transformer(src, tgt, tgt_mask=tgt_mask)
-
+        output = self.transformer(
+            src, tgt,
+            tgt_mask=tgt_mask,
+            tgt_key_padding_mask=tgt_key_padding_mask.bool() if tgt_key_padding_mask is not None else None,
+            src_key_padding_mask=src_key_padding_mask,
+        )
         output = output.transpose(0, 1)
         return self.fc(output)
 
@@ -85,9 +85,9 @@ class LanguageTransformer(nn.Module):
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, 0.0)
         return mask
 
-    def forward_encoder(self, src):
+    def forward_encoder(self, src, src_key_padding_mask=None):
         src = self.pos_enc(src * math.sqrt(self.d_model))
-        return self.transformer.encoder(src)
+        return self.transformer.encoder(src, src_key_padding_mask=src_key_padding_mask)
 
     def forward_decoder(self, tgt, memory):
         tgt_mask = self.gen_nopeek_mask(tgt.shape[0]).to(tgt.device)
@@ -111,19 +111,19 @@ class TransformerOCR(nn.Module):
         )
         self.vocab_size = vocab_size
 
-    def forward(self, img, tgt_input, tgt_key_padding_mask=None):
+    def forward(self, img, tgt_input, tgt_key_padding_mask=None, src_key_padding_mask=None):
         src = self.cnn(img)
-        return self.transformer(src, tgt_input, tgt_key_padding_mask)
+        return self.transformer(src, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
 
     @torch.no_grad()
-    def greedy_decode(self, img, max_len=128, sos_token=1, eos_token=2):
+    def greedy_decode(self, img, max_len=128, sos_token=1, eos_token=2, src_key_padding_mask=None):
         import numpy as np
         self.eval()
         device = img.device
         batch_size = img.size(0)
 
         src = self.cnn(img)
-        memory = self.transformer.forward_encoder(src)
+        memory = self.transformer.forward_encoder(src, src_key_padding_mask)
 
         translated_sentence = [[sos_token] * batch_size]
         char_probs = [[1.0] * batch_size]

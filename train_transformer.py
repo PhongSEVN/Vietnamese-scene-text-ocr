@@ -82,7 +82,7 @@ def train():
         model.train()
         train_loss = 0
         pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs} [Train]")
-        for img_batch, label_batch in pbar:
+        for img_batch, label_batch, img_widths in pbar:
             img_batch = img_batch.to(device)
             label_batch = label_batch.to(device)
 
@@ -90,7 +90,15 @@ def train():
             tgt_output = label_batch[:, 1:]
             tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-            output = model(img_batch, tgt_input, tgt_key_padding_mask)
+            # build src padding mask: CNN output width depends on input width
+            src_len = img_batch.shape[3] // 4  # approximate feature map width
+            src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
+            for i, w in enumerate(img_widths):
+                feat_w = max(1, w.item() // 4)
+                if feat_w < src_len:
+                    src_key_padding_mask[i, feat_w:] = True
+
+            output = model(img_batch, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
             loss = criterion(output.contiguous().view(-1, vocab_size), tgt_output.contiguous().view(-1))
 
             optimizer.zero_grad()
@@ -111,7 +119,7 @@ def train():
         total_words = 0
 
         with torch.no_grad():
-            for img_batch, label_batch in tqdm(val_loader, desc=f"Epoch {epoch+1} [Val]  "):
+            for img_batch, label_batch, img_widths in tqdm(val_loader, desc=f"Epoch {epoch+1} [Val]  "):
                 img_batch = img_batch.to(device)
                 label_batch = label_batch.to(device)
 
@@ -119,11 +127,19 @@ def train():
                 tgt_output = label_batch[:, 1:]
                 tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-                output = model(img_batch, tgt_input, tgt_key_padding_mask)
+                src_len = img_batch.shape[3] // 4
+                src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
+                for i, w in enumerate(img_widths):
+                    feat_w = max(1, w.item() // 4)
+                    if feat_w < src_len:
+                        src_key_padding_mask[i, feat_w:] = True
+
+                output = model(img_batch, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
                 loss = criterion(output.contiguous().view(-1, vocab_size), tgt_output.contiguous().view(-1))
                 val_loss += loss.item()
 
-                pred_indices, _ = model.greedy_decode(img_batch, max_len=config.get('max_text_length', 25))
+                pred_indices, _ = model.greedy_decode(img_batch, max_len=config.get('max_text_length', 25),
+                                                      src_key_padding_mask=src_key_padding_mask)
                 pred_texts = vocab.batch_decode(pred_indices.tolist())
                 target_texts = vocab.batch_decode(label_batch.tolist())
                 for pred, gt in zip(pred_texts, target_texts):

@@ -169,6 +169,9 @@ class TransformerOCRDataset(Dataset):
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = self._resize_image(img)
         img = img.astype(np.float32) / 255.0
+        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        std  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+        img = (img - mean) / std
         img_tensor = torch.FloatTensor(img.transpose(2, 0, 1))
         label_ids = self.vocab.encode(text)
 
@@ -180,11 +183,14 @@ def collate_fn(batch):
 
     max_w = max(img.shape[2] for img in imgs)
     padded_imgs = []
+    img_widths = []
     for img in imgs:
         c, h, w = img.shape
-        padded = torch.zeros(c, h, max_w)
+        pad_val = (0.0 - 0.485) / 0.229
+        padded = torch.full((c, h, max_w), pad_val)
         padded[:, :, :w] = img
         padded_imgs.append(padded)
+        img_widths.append(w)
     img_batch = torch.stack(padded_imgs, 0)
 
     max_len = max(len(label) for label in labels)
@@ -192,4 +198,4 @@ def collate_fn(batch):
     for i, label in enumerate(labels):
         padded_labels[i, :len(label)] = label
 
-    return img_batch, padded_labels
+    return img_batch, padded_labels, torch.tensor(img_widths, dtype=torch.long)

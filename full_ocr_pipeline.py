@@ -127,8 +127,8 @@ class FullOCRPipeline:
             for box in horizontal_list[0]:
                 x_min, x_max, y_min, y_max = box
                 bboxes.append({
-                    'bbox': [[x_min, y_min], [x_max, y_min],
-                             [x_max, y_max], [x_min, y_max]],
+                    'bbox': [[int(x_min), int(y_min)], [int(x_max), int(y_min)],
+                             [int(x_max), int(y_max)], [int(x_min), int(y_max)]],
                     'x_min': int(x_min), 'y_min': int(y_min),
                     'x_max': int(x_max), 'y_max': int(y_max)
                 })
@@ -139,7 +139,7 @@ class FullOCRPipeline:
                 xs = [p[0] for p in polygon]
                 ys = [p[1] for p in polygon]
                 bboxes.append({
-                    'bbox': polygon,
+                    'bbox': [[int(p[0]), int(p[1])] for p in polygon],
                     'x_min': int(min(xs)), 'y_min': int(min(ys)),
                     'x_max': int(max(xs)), 'y_max': int(max(ys))
                 })
@@ -184,32 +184,56 @@ class FullOCRPipeline:
 
         return text.strip(), confidence
 
-    def _sort_results(self, results):
-        """
-        Sắp xếp kết quả theo thứ tự đọc tự nhiên:
-        Trên → Dưới, Trái → Phải.
-        Các box cùng hàng (chênh y < 15px) sẽ được sắp theo x.
-        """
+    def _sort_results(self, results, overlap_threshold=0.4):
+
         if not results:
-            return results
+            return []
 
-        # Sắp xếp sơ bộ theo y_min
-        results.sort(key=lambda r: r['y_min'])
+        # Trích xuất đặc trưng hình học
+        for r in results:
+            r['cy'] = (r['y_min'] + r['y_max']) / 2
+            r['h'] = r['y_max'] - r['y_min']
 
-        # Gom các box cùng hàng (chênh lệch y < ngưỡng)
-        LINE_THRESHOLD = 15  # pixel
+        # Sắp xếp sơ bộ toàn bộ box từ trên xuống dưới theo trục y (tâm)
+        results.sort(key=lambda r: r['cy'])
+
         lines = []
-        current_line = [results[0]]
+        current_line = []
+        line_top = None
+        line_bottom = None
+        line_h = None
 
-        for i in range(1, len(results)):
-            if abs(results[i]['y_min'] - current_line[0]['y_min']) < LINE_THRESHOLD:
-                current_line.append(results[i])
+        # Phân nhóm thành các dòng dựa trên độ giao nhau (overlap)
+        for r in results:
+            if not current_line:
+                current_line.append(r)
+                line_top = r['y_min']
+                line_bottom = r['y_max']
+                line_h = r['h']
             else:
-                lines.append(current_line)
-                current_line = [results[i]]
-        lines.append(current_line)
+                overlap_min = max(line_top, r['y_min'])
+                overlap_max = min(line_bottom, r['y_max'])
+                overlap_height = max(0, overlap_max - overlap_min)
 
-        # Sắp xếp mỗi hàng theo x_min (trái sang phải)
+                min_height = min(line_h, r['h'])
+
+                # Nếu độ giao nhau theo trục dọc chiếm >= overlap_threshold, xếp vào cùng 1 hàng
+                if min_height > 0 and (overlap_height / min_height) >= overlap_threshold:
+                    current_line.append(r)
+                    line_top = min(line_top, r['y_min'])
+                    line_bottom = max(line_bottom, r['y_max'])
+                    line_h = line_bottom - line_top # Cập nhật lại height của cả line
+                else:
+                    lines.append(current_line)
+                    current_line = [r]
+                    line_top = r['y_min']
+                    line_bottom = r['y_max']
+                    line_h = r['h']
+
+        if current_line:
+            lines.append(current_line)
+
+        # Sắp xếp trong mỗi dòng từ trái qua phải
         sorted_results = []
         for line in lines:
             line.sort(key=lambda r: r['x_min'])
@@ -335,7 +359,7 @@ if __name__ == "__main__":
     )
 
     # Đổi đường dẫn ảnh bạn muốn test tại đây
-    image_to_test = "data/dataset/test_image/im1208.jpg"
+    image_to_test = "data/dataset/test_image/im1211.jpg"
 
     print(f"\nĐang thực hiện OCR cho: {image_to_test}...")
     results = pipeline.run_ocr(image_to_test)
