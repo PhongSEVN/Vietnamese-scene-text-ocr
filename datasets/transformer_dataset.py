@@ -159,8 +159,8 @@ class TransformerOCRDataset(Dataset):
                 
                 if random.random() < 0.3:
                     if random.random() < 0.5:
-                        noise = np.random.normal(0, 5, img.shape).astype(np.uint8)
-                        img = cv2.add(img, noise)
+                        noise = np.random.normal(0, 5, img.shape)
+                        img = np.clip(img.astype(np.int16) + noise, 0, 255).astype(np.uint8)
                     else:
                         img = cv2.GaussianBlur(img, (3, 3), 0)
             except Exception:

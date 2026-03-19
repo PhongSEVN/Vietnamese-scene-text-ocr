@@ -54,9 +54,16 @@ def evaluate():
     char_total = 0
 
     with torch.no_grad():
-        for i, (img_batch, label_batch, _) in enumerate(tqdm(test_loader)):
+        for i, (img_batch, label_batch, img_widths) in enumerate(tqdm(test_loader)):
             img_batch = img_batch.to(device)
-            pred_indices, _ = model.greedy_decode(img_batch, max_len=config.get('max_text_length', 25))
+            src_len = img_batch.shape[3] // 2
+            src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
+            for j, w in enumerate(img_widths):
+                feat_valid = max(1, w.item() // 4) * 2
+                if feat_valid < src_len:
+                    src_key_padding_mask[j, feat_valid:] = True
+            pred_indices, _ = model.greedy_decode(img_batch, max_len=config.get('max_text_length', 25),
+                                                  src_key_padding_mask=src_key_padding_mask)
 
             pred_texts = vocab.batch_decode(pred_indices.tolist())
             target_texts = vocab.batch_decode(label_batch.tolist())
@@ -70,7 +77,7 @@ def evaluate():
                 for p, g in zip(pred, gt):
                     if p == g:
                         char_correct += 1
-                char_total += len(gt)
+                char_total += max(len(pred), len(gt))
                 total_words += 1
 
     print(f"\n{'='*40}")

@@ -66,7 +66,7 @@ def train():
         print(f"Resumed from: {resume_path}")
 
     criterion = nn.CrossEntropyLoss(ignore_index=Vocab.PAD, label_smoothing=0.1)
-    lr = 0.00005
+    lr = config.get('learning_rate', 0.00005)
     optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.98), eps=1e-9, weight_decay=1e-4)
     scheduler = optim.lr_scheduler.OneCycleLR(
         optimizer, max_lr=lr, epochs=config.get('num_epochs', 50),
