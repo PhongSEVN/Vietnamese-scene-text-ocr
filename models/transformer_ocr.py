@@ -81,9 +81,7 @@ class LanguageTransformer(nn.Module):
         return self.fc(output)
 
     def gen_nopeek_mask(self, length):
-        mask = (torch.triu(torch.ones(length, length)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, 0.0)
-        return mask
+        return torch.triu(torch.ones(length, length, dtype=torch.bool), diagonal=1)
 
     def forward_encoder(self, src, src_key_padding_mask=None):
         src = self.pos_enc(src * math.sqrt(self.d_model))

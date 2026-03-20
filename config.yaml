@@ -16,7 +16,7 @@ char_list: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`a
 # Tham số huấn luyện (Tối ưu theo paper VinText)
 batch_size: 32
 num_epochs: 300
-learning_rate: 0.001
+learning_rate: 0.0003
 optimizer: "adam"
 num_workers: 0
 save_interval: 5

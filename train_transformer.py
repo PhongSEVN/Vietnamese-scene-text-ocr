@@ -10,6 +10,12 @@ from models.transformer_ocr import TransformerOCR
 from datasets.transformer_dataset import Vocab, TransformerOCRDataset, collate_fn, VIETNAMESE_CHARS
 
 
+def cnn_seq_len(w):
+    w = (w - 2) // 2 + 1  # AvgPool1: kernel=2, stride=2
+    w = (w - 2) // 2 + 1  # AvgPool2: kernel=2, stride=2
+    return w * 2           # H_out=2 (fixed for input height=32)
+
+
 def train():
     with open('config.yaml', 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
@@ -90,11 +96,10 @@ def train():
             tgt_output = label_batch[:, 1:]
             tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-            # build src padding mask: CNN output seq_len = H_out * W_out = 2 * (W // 4) = W // 2
-            src_len = img_batch.shape[3] // 2
+            src_len = cnn_seq_len(img_batch.shape[3])
             src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
             for i, w in enumerate(img_widths):
-                feat_valid = max(1, w.item() // 4) * 2
+                feat_valid = cnn_seq_len(w.item())
                 if feat_valid < src_len:
                     src_key_padding_mask[i, feat_valid:] = True
 
@@ -127,10 +132,10 @@ def train():
                 tgt_output = label_batch[:, 1:]
                 tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-                src_len = img_batch.shape[3] // 2
+                src_len = cnn_seq_len(img_batch.shape[3])
                 src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
                 for i, w in enumerate(img_widths):
-                    feat_valid = max(1, w.item() // 4) * 2
+                    feat_valid = cnn_seq_len(w.item())
                     if feat_valid < src_len:
                         src_key_padding_mask[i, feat_valid:] = True
 
