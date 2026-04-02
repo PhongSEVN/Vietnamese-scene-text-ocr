@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from torchvision import models
+from torchvision.models import efficientnet_b0, EfficientNet_B0_Weights
 
 
 class PositionalEncoding(nn.Module):
@@ -53,6 +54,31 @@ class VGGBackbone(nn.Module):
         return conv
 
 
+class EfficientNetBackbone(nn.Module):
+    def __init__(self, d_model=256, pretrained=True, dropout=0.5):
+        super().__init__()
+        weights = EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None
+        cnn = efficientnet_b0(weights=weights)
+
+        # Patch the first Conv2d stride: (2,2) -> (1,1) to preserve spatial resolution.
+        # For input (B, 3, 32, 128), this gives features output (B, 1280, 2, 8)
+        # instead of the default (B, 1280, 1, 4).
+        cnn.features[0][0].stride = (1, 1)
+
+        self.features = cnn.features  # output: (B, 1280, H', W')
+        self.dropout = nn.Dropout(dropout)
+        self.last_conv_1x1 = nn.Conv2d(1280, d_model, 1)
+
+    def forward(self, x):
+        conv = self.features(x)          # (B, 1280, H', W')
+        conv = self.dropout(conv)
+        conv = self.last_conv_1x1(conv)  # (B, d_model, H', W')
+        conv = conv.transpose(-1, -2)    # (B, d_model, W', H')
+        conv = conv.flatten(2)           # (B, d_model, W'*H')
+        conv = conv.permute(-1, 0, 1)   # (seq_len, B, d_model)
+        return conv
+
+
 class LanguageTransformer(nn.Module):
     def __init__(self, vocab_size, d_model, nhead, num_encoder_layers, num_decoder_layers,
                  dim_feedforward, max_seq_length, pos_dropout, trans_dropout):
@@ -100,9 +126,13 @@ class TransformerOCR(nn.Module):
                  num_encoder_layers=6, num_decoder_layers=6,
                  dim_feedforward=2048, max_seq_length=128,
                  pos_dropout=0.1, trans_dropout=0.1,
-                 cnn_pretrained=True, cnn_dropout=0.5, ss=None, ks=None):
+                 cnn_pretrained=True, cnn_dropout=0.5, ss=None, ks=None,
+                 backbone='vgg'):
         super().__init__()
-        self.cnn = VGGBackbone(d_model, cnn_pretrained, cnn_dropout, ss, ks)
+        if backbone == 'efficientnet':
+            self.cnn = EfficientNetBackbone(d_model, cnn_pretrained, cnn_dropout)
+        else:
+            self.cnn = VGGBackbone(d_model, cnn_pretrained, cnn_dropout, ss, ks)
         self.transformer = LanguageTransformer(
             vocab_size, d_model, nhead, num_encoder_layers, num_decoder_layers,
             dim_feedforward, max_seq_length, pos_dropout, trans_dropout
@@ -149,3 +179,11 @@ class TransformerOCR(nn.Module):
         avg_probs = np.sum(char_probs_masked, axis=-1) / np.maximum(valid_counts, 1)
 
         return translated_sentence, avg_probs
+
+
+if __name__ == '__main__':
+    x = torch.randn(2, 3, 32, 128)
+    model = EfficientNetBackbone(d_model=256)
+    out = model(x)
+    print("EfficientNet output:", out.shape)
+    # Expected: (seq_len, 2, 256)

@@ -52,6 +52,7 @@ def train():
         cnn_pretrained=True, cnn_dropout=0.5,
         ss=[(2,2),(2,2),(2,1),(2,1),(1,1)],
         ks=[(2,2),(2,2),(2,1),(2,1),(1,1)],
+        backbone='efficientnet',
     ).to(device)
 
     total_params = sum(p.numel() for p in model.parameters())
@@ -96,14 +97,15 @@ def train():
             tgt_output = label_batch[:, 1:]
             tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-            src_len = cnn_seq_len(img_batch.shape[3])
+            src = model.cnn(img_batch)
+            src_len = src.shape[0]
             src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
             for i, w in enumerate(img_widths):
-                feat_valid = cnn_seq_len(w.item())
+                feat_valid = round(src_len * w.item() / img_batch.shape[3])
                 if feat_valid < src_len:
                     src_key_padding_mask[i, feat_valid:] = True
 
-            output = model(img_batch, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
+            output = model.transformer(src, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
             loss = criterion(output.contiguous().view(-1, vocab_size), tgt_output.contiguous().view(-1))
 
             optimizer.zero_grad()
@@ -132,14 +134,15 @@ def train():
                 tgt_output = label_batch[:, 1:]
                 tgt_key_padding_mask = (label_batch[:, :-1] == Vocab.PAD)
 
-                src_len = cnn_seq_len(img_batch.shape[3])
+                src = model.cnn(img_batch)
+                src_len = src.shape[0]
                 src_key_padding_mask = torch.zeros(img_batch.size(0), src_len, dtype=torch.bool, device=device)
                 for i, w in enumerate(img_widths):
-                    feat_valid = cnn_seq_len(w.item())
+                    feat_valid = round(src_len * w.item() / img_batch.shape[3])
                     if feat_valid < src_len:
                         src_key_padding_mask[i, feat_valid:] = True
 
-                output = model(img_batch, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
+                output = model.transformer(src, tgt_input, tgt_key_padding_mask, src_key_padding_mask)
                 loss = criterion(output.contiguous().view(-1, vocab_size), tgt_output.contiguous().view(-1))
                 val_loss += loss.item()
 
